@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: sosync-api
+
+  datasource:
+    # DB_URL takes a whole JDBC URL, which is the form a hosted database hands out
+    # (e.g. jdbc:postgresql://ep-xyz.neon.tech/neondb?sslmode=require). Locally the parts apply.
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:sosync_db}}
+    username: ${DB_USERNAME:sosync}
+    password: ${DB_PASSWORD:sosync}
+    hikari:
+      # Free hosted Postgres plans cap connections; a prototype never needs Hikari's default 10.
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. Hibernate only validates that the mapping matches it, which turns
+      # a mismatch into a startup failure with a clear message instead of a runtime surprise.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  jackson:
+    # Boot 4 ships Jackson 3, where date handling moved off SerializationFeature. Jackson 3
+    # already writes java.time values as ISO-8601 strings, so no override is needed here.
+    default-property-inclusion: non_null
+
+server:
+  # SERVER_PORT for the Oracle compose file; PORT is what Render assigns.
+  port: ${SERVER_PORT:${PORT:8090}}
+  error:
+    include-message: always
+
+sosync:
+  jwt:
+    # Development default only. Override with SOSYNC_JWT_SECRET in any deployed environment;
+    # anyone holding this value can mint a token for any user, including an admin.
+    secret: ${SOSYNC_JWT_SECRET:sosync-dev-secret-change-me-in-production-0123456789abcdef}
+    issuer: sosync
+    access-token-minutes: 1440       # long-lived on purpose: nobody re-authenticates mid-emergency
+    refresh-token-days: 30
+  location:
+    # How stale a responder's own position may be before they stop receiving nearby alerts.
+    responder-freshness-minutes: 30
+    # Radius used to match an incident to nearby responders.
+    nearby-radius-km: 15.0
+  notifications:
+    # No real SMS or FCM credentials in the prototype. Deliveries are recorded as SIMULATED and
+    # returned over the API so the demo can show exactly what each recipient would have received.
+    simulate: ${SOSYNC_SIMULATE_NOTIFICATIONS:true}
+  demo:
+    # Seeds the demo accounts and a resolved historical incident on startup. Idempotent.
+    seed: ${SOSYNC_SEED_DEMO:true}
+    # Password for every seeded account. The default is in the README; set your own on a
+    # public server. Only applies when the accounts are first created.
+    password: "${SOSYNC_DEMO_PASSWORD:Sosync#2026}"
+
+springdoc:
+  swagger-ui:
+    path: /docs
+    tags-sorter: alpha
+    operations-sorter: method
+  api-docs:
+    path: /api-docs
+
+logging:
+  level:
+    com.sosync: DEBUG
+    org.hibernate.orm.jdbc.bind: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

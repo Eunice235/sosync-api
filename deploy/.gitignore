@@ -1,0 +1,2 @@
+# Your server IP and the path to your SSH key, remembered by deploy.ps1. Personal, not shared.
+.deploy-settings

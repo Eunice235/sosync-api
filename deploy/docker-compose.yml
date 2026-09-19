@@ -1,0 +1,51 @@
+# SOSync on the server: the API and its database.
+#
+# Both use the host's network directly rather than Docker's own. That keeps the firewall story
+# to one rule - port 80 open, everything else closed - instead of Docker's port publishing
+# interacting with the firewall rules Oracle's Ubuntu images ship with.
+#
+# The database only listens on 127.0.0.1, so it cannot be reached from the internet even if a
+# firewall rule is ever opened by mistake. Only the API is public.
+#
+# Secrets come from .env, which setup.sh generates once on the server. Do not delete it: the
+# database was created with that password, and a new one will not match.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    network_mode: host
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      POSTGRES_DB: sosync_db
+      POSTGRES_USER: sosync
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?run setup.sh first - it creates .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U sosync -d sosync_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "80"
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_NAME: sosync_db
+      DB_USERNAME: sosync
+      DB_PASSWORD: ${DB_PASSWORD:?run setup.sh first - it creates .env}
+      # Replaces the development secret written in application.yml. Anyone holding the
+      # signing key can mint a login for any account, including an admin.
+      SOSYNC_JWT_SECRET: ${SOSYNC_JWT_SECRET:?run setup.sh first - it creates .env}
+      SOSYNC_SEED_DEMO: "true"
+
+volumes:
+  pgdata:

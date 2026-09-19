@@ -1,0 +1,107 @@
+// SOSync backend - single-module Spring Boot service.
+//
+// Deliberately a monolith. The Readers monorepo it borrows conventions from is split into
+// microservices behind a gateway with Eureka and Pulsar; none of that earns its keep in a
+// five-day proof of concept, and all of it has to be running before a demo can start.
+// Same language, framework, database and idioms - one deployable unit.
+plugins {
+    id 'org.springframework.boot'           version '4.0.5'
+    id 'io.spring.dependency-management'    version '1.1.7'
+    id 'org.jetbrains.kotlin.jvm'           version '2.2.21'
+    id 'org.jetbrains.kotlin.plugin.spring' version '2.2.21'
+    id 'org.jetbrains.kotlin.plugin.jpa'    version '2.2.21'
+}
+
+group = 'com.sosync'
+version = '0.1.0'
+description = 'SOSync - discreet emergency reporting and rapid response'
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll '-Xjsr305=strict', '-Xannotation-default-target=param-property'
+    }
+}
+
+// JPA needs to subclass entities and construct them reflectively; Kotlin classes are final
+// with no no-arg constructor by default.
+allOpen {
+    annotation 'jakarta.persistence.Entity'
+    annotation 'jakarta.persistence.MappedSuperclass'
+    annotation 'jakarta.persistence.Embeddable'
+}
+
+tasks.named('jar') { archiveBaseName = 'sosync-api' }
+tasks.named('bootJar') { archiveBaseName = 'sosync-api' }
+
+tasks.named('test') {
+    useJUnitPlatform()
+    // Docker Engine 29 dropped the API versions docker-java negotiates by default; without this
+    // Testcontainers reports "no Docker environment found" and silently skips container tests.
+    systemProperty 'api.version', providers.gradleProperty('dockerApiVersion').getOrElse('1.44')
+}
+
+tasks.withType(AbstractTestTask).configureEach {
+    failOnNoDiscoveredTests = false
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:1.21.3"
+    }
+}
+
+dependencies {
+    // ── Web (MVC, blocking - not the reactive stack Readers' core services use) ──────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ── Persistence ─────────────────────────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // ── Security ────────────────────────────────────────────────────────────────────────
+    // Resource server + Nimbus gives us HS256 sign and verify without a separate auth server.
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
+    // ── API documentation ───────────────────────────────────────────────────────────────
+    // Swagger UI doubles as the demo console and as the API docs deliverable.
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
+
+    // ── Observability ───────────────────────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // ── Kotlin ──────────────────────────────────────────────────────────────────────────
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    // Boot 4 serialises HTTP bodies with Jackson 3 (`tools.jackson`), not Jackson 2
+    // (`com.fasterxml`). The Kotlin module has to match that, or request bodies bind to data
+    // classes without honouring nullability or default values. The version comes from the
+    // tools.jackson BOM that Boot already manages.
+    implementation 'tools.jackson.module:jackson-module-kotlin'
+
+    // ── Utils ───────────────────────────────────────────────────────────────────────────
+    implementation 'io.github.oshai:kotlin-logging-jvm:7.0.7'
+    implementation 'io.viascom.nanoid:nanoid:1.0.1'
+    // Phone numbers are the identity and the SMS fallback address; a number wrong by one digit
+    // belongs to somebody else, so they are parsed and normalised to E.164 rather than regexed.
+    implementation 'com.googlecode.libphonenumber:libphonenumber:9.0.20'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // ── Test ────────────────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+    // @ServiceConnection wires the container's JDBC url into the context automatically, so no
+    // test needs to know the mapped port.
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

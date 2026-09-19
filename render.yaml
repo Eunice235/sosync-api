@@ -1,0 +1,24 @@
+# Render blueprint for the SOSync API. In Render: New → Blueprint → pick this repository.
+# See deploy/RENDER.md for the full steps.
+services:
+  - type: web
+    name: sosync-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      # From Neon, as jdbc:postgresql://<host>/<database>?sslmode=require
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Signs every login token. Render generates a random one; never commit a real value.
+      - key: SOSYNC_JWT_SECRET
+        generateValue: true
+      # Your own password for the demo accounts, instead of the one in the README.
+      - key: SOSYNC_DEMO_PASSWORD
+        sync: false

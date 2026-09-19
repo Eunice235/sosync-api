@@ -1,0 +1,21 @@
+# Each part (backend/, mobile/, deploy/) has its own .gitignore for build output.
+# These are the things that must never reach GitHub from anywhere in the project.
+
+# Secrets and personal settings
+.env
+*.env
+.deploy-settings
+*.key
+*.pem
+
+# Local tooling
+.claude/
+.idea/
+.vscode/
+*.iml
+
+# Built files
+*.apk
+*.aab
+*.jar
+!gradle-wrapper.jar

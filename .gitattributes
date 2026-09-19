@@ -1,0 +1,6 @@
+# Scripts that run on Linux (Render's builder, the Oracle VM) must keep LF line endings
+# even when committed from Windows.
+gradlew    text eol=lf
+*.sh       text eol=lf
+Dockerfile text eol=lf
+*.bat      text eol=crlf

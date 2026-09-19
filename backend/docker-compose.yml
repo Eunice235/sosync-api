@@ -1,0 +1,22 @@
+# Postgres for local development. Port 5433 on the host so it cannot collide with an existing
+# local Postgres or with the Readers data-stores compose file.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sosync-postgres
+    environment:
+      POSTGRES_DB: sosync_db
+      POSTGRES_USER: sosync
+      POSTGRES_PASSWORD: sosync
+    ports:
+      - "5433:5432"
+    volumes:
+      - sosync-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sosync -d sosync_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  sosync-pgdata:

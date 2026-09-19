@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 9 and later block plain HTTP by default, and the failure is silent enough to waste an
+  afternoon: every request dies at the socket, so the app looks unable to reach a server that is
+  answering perfectly well from a browser on the same machine.
+
+  This permits cleartext for everything, because a local demo needs whatever address the laptop
+  happens to have on the wifi that day, and Android matches exact hosts here - there is no way
+  to express "any 192.168.x.x" in this file.
+
+  That is a real trade and not a tidy one. As it stands, an emergency alert carrying a live
+  location would travel unencrypted, readable by anyone on the same network. Acceptable for a
+  prototype talking to a laptop across the room; not acceptable for anything real.
+
+  **Before deploying:** serve the API over HTTPS, delete this file, and drop
+  `android:networkSecurityConfig` from the manifest. Cleartext then goes back to being blocked
+  by default, which is the behaviour you want.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>
