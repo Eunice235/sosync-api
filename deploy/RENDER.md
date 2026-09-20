@@ -63,8 +63,8 @@ Then build the APK to share:
 cd mobile && flutter build apk --release
 ```
 
-The file is `mobile/build/app/outputs/flutter-apk/app-release.apk`. Anyone who used the
-**Change** link on an earlier build should uninstall it first, or the saved address wins.
+The file is `mobile/build/app/outputs/flutter-apk/app-release.apk`. It installs over an earlier
+build; any server address saved by an older version is cleared on first launch.
 
 ## Updating
 

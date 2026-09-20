@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
-import '../config.dart';
 import '../i18n/strings.dart';
 import '../state/auth_store.dart';
 import '../theme.dart';
@@ -168,11 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 22),
                     const Divider(),
                     const SizedBox(height: 14),
-                    // Visible on the sign-in screen on purpose: this is the first thing that
-                    // breaks when demoing from a real phone, and it is easier to fix here than
-                    // to discover after a failed login.
-                    _ServerAddressRow(),
-                    const SizedBox(height: 14),
                     Text(
                       strings.prototypeNotice,
                       textAlign: TextAlign.center,
@@ -190,75 +184,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-}
-
-/// Shows which server the app will talk to, and lets it be changed before signing in.
-class _ServerAddressRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.dns_outlined, size: 16, color: AppTheme.textMuted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            AppConfig.baseUrl,
-            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        TextButton(
-          onPressed: () => _edit(context),
-          child: Text(
-            Strings.of(context).changeAction,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _edit(BuildContext context) async {
-    final controller = TextEditingController(text: AppConfig.baseUrl);
-    final strings = Strings.of(context);
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(strings.serverAddress),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              strings.serverAddressHint,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(hintText: 'http://192.168.1.20:8090'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(strings.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: Text(strings.save),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && context.mounted) {
-      await context.read<AuthStore>().setBaseUrl(result);
-    }
   }
 }

@@ -4,42 +4,25 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   AppConfig._();
 
-  /// **The laptop running the backend, as the phone sees it on the wifi.**
+  /// **The hosted API (Render — see deploy/RENDER.md).**
   ///
-  /// This is the one line to change when the laptop's address changes — on a different wifi
-  /// network, or when the laptop joins the phone's hotspot. Find the value with `ipconfig`,
-  /// under *Wireless LAN adapter Wi-Fi → IPv4 Address*, then rebuild and reinstall the APK.
-  ///
-  /// The Change link on the sign-in screen still works as a same-day override without a
-  /// rebuild, for when the IP changes an hour before a demo.
-  static const String serverAddress = 'http://192.168.0.103:8090';
+  /// Every installed APK talks to this address, from any network. There is deliberately no
+  /// way to change it from inside the app: a tester who mistypes it gets an app that silently
+  /// reaches nobody, which on an SOS button is the worst possible failure.
+  static const String serverAddress = 'https://sosync-api-8gt4.onrender.com';
 
+  /// For development against a backend on your own laptop, without touching this file:
+  /// `flutter run --dart-define=SOSYNC_API=http://localhost:8090` (with `adb reverse tcp:8090
+  /// tcp:8090` for a phone on USB).
   static const String _compileTimeOverride =
       String.fromEnvironment('SOSYNC_API', defaultValue: '');
 
-  static String? _runtimeOverride;
-
-  /// Set from saved preferences at startup, and when the user edits it.
-  static void setRuntimeBaseUrl(String? url) {
-    final trimmed = url?.trim();
-    _runtimeOverride =
-        (trimmed == null || trimmed.isEmpty) ? null : trimmed.replaceAll(RegExp(r'/+$'), '');
-  }
-
   static String get baseUrl {
-    if (_runtimeOverride != null) return _runtimeOverride!;
     if (_compileTimeOverride.isNotEmpty) return _compileTimeOverride;
-    return defaultBaseUrl;
-  }
-
-  static String get defaultBaseUrl {
     // The web build runs in a browser on the laptop itself, so it reaches the backend locally.
     if (kIsWeb) return 'http://localhost:8090';
-    // Phones and the Android emulator both reach the laptop by its wifi address.
     return serverAddress;
   }
-
-  static bool get isCustomBaseUrl => _runtimeOverride != null;
 
   /// How often the app re-reads an open incident.
   ///

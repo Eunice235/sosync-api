@@ -22,15 +22,21 @@ cd mobile && flutter run -d chrome
 The app talks to the backend at the address in **`lib/config.dart`**:
 
 ```dart
-static const String serverAddress = 'http://YOUR-SERVER-IP';
+static const String serverAddress = 'https://sosync-api-8gt4.onrender.com';
 ```
 
-For testing with other people, the backend runs on an Oracle Cloud server — see
-[`../deploy/README.md`](../deploy/README.md). Put that server's public IP here, then build the
-APK. Every phone that installs it connects to the same server, from any network.
+That is the hosted API on Render (see [`../deploy/RENDER.md`](../deploy/RENDER.md)). Every phone
+that installs the APK connects to it, from any network. To host your own, deploy the backend and
+put its address here before building.
 
-The web build ignores this and uses `http://localhost:8090`, since it runs on the laptop. The
-**Change** link on the sign-in screen overrides it on a single phone without a rebuild.
+The web build ignores this and uses `http://localhost:8090`, since it runs on the laptop. There
+is no way to change the address inside the app. To point a development build at a backend on
+your laptop, with the phone on USB:
+
+```bash
+adb reverse tcp:8090 tcp:8090
+flutter run --dart-define=SOSYNC_API=http://localhost:8090
+```
 
 ## What is built
 

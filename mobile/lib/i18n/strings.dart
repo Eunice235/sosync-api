@@ -148,8 +148,6 @@ abstract class Strings {
   String get confirmWithPassword;
   String get emergencyNote;
   String get emergencyNoteHint;
-  String get serverAddress;
-  String get serverAddressHint;
   String get prototypeNotice;
 
   // ── Generic ────────────────────────────────────────────────────────────────────
@@ -158,7 +156,6 @@ abstract class Strings {
   String get priorityContact;
   String get priorityContactHint;
   String get priorityBadge;
-  String get changeAction;
   String get languageChangeHint;
   String get passwordTooShort;
   String get save;
@@ -445,11 +442,6 @@ class EnStrings extends Strings {
   String get emergencyNoteHint =>
       'Medical conditions, what you look like, who to expect with you.';
   @override
-  String get serverAddress => 'Server address';
-  @override
-  String get serverAddressHint =>
-      'Change this to demo on a real phone: use your computer address on the same network.';
-  @override
   String get prototypeNotice =>
       'Prototype. Not connected to any emergency service. Responders are verified community '
       'or private security, not police.';
@@ -478,8 +470,6 @@ class EnStrings extends Strings {
   String get priorityContactHint => 'Alerted first, and always by SMS.';
   @override
   String get priorityBadge => 'Priority 1';
-  @override
-  String get changeAction => 'Change';
   @override
   String get languageChangeHint => 'Changes the app and the alerts you receive.';
   @override

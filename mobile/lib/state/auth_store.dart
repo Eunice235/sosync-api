@@ -18,7 +18,9 @@ class AuthStore extends ChangeNotifier {
 
   static const _keyAccessToken = 'sosync.accessToken';
   static const _keyRefreshToken = 'sosync.refreshToken';
-  static const _keyBaseUrl = 'sosync.baseUrl';
+  /// Where builds with a Change-server link saved their address. No longer read; removed on
+  /// launch so a phone upgraded from one of those builds follows [AppConfig] like the rest.
+  static const _keyLegacyBaseUrl = 'sosync.baseUrl';
 
   AppUser? _user;
   String? _refreshToken;
@@ -38,9 +40,7 @@ class AuthStore extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // The server address is restored first: without it, the token check below would be
-      // pointed at the wrong host and fail for the wrong reason.
-      AppConfig.setRuntimeBaseUrl(prefs.getString(_keyBaseUrl));
+      await prefs.remove(_keyLegacyBaseUrl);
 
       final token = prefs.getString(_keyAccessToken);
       _refreshToken = prefs.getString(_keyRefreshToken);
@@ -128,19 +128,6 @@ class AuthStore extends ChangeNotifier {
     } catch (_) {
       // A failed refresh of the profile is not worth disturbing the user over.
     }
-  }
-
-  /// Points the app at a different server and remembers it. Used to demo on a real phone.
-  Future<void> setBaseUrl(String? url) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (url == null || url.trim().isEmpty) {
-      await prefs.remove(_keyBaseUrl);
-      AppConfig.setRuntimeBaseUrl(null);
-    } else {
-      await prefs.setString(_keyBaseUrl, url.trim());
-      AppConfig.setRuntimeBaseUrl(url);
-    }
-    notifyListeners();
   }
 
   Future<void> _apply(AuthResult result) async {
