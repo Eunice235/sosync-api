@@ -84,6 +84,18 @@ along with the refusal it was recording. A missing GPS fix is treated as a degra
 rather than a failure — reaching people with no position beats not reaching them at all — and the
 app always says which of the two happened.
 
+## The operating constraints, one by one
+
+| Constraint | How SOSync answers it |
+|---|---|
+| **Trust and verification** | Positions carry their accuracy and their age in seconds, so a map pin can never imply a freshness it does not have. Every delivery records its channel and whether it was real or simulated. Responders are verified by an administrator, never self-service. |
+| **Low bandwidth and limited access** | Small polled requests rather than a held-open connection, so it recovers by itself when a connection drops and returns. SMS is a first-class channel that reaches a phone with no app and no data. Map tiles are OpenStreetMap, with no commercial key. USSD is on the roadmap, for a phone that cannot run an app at all. |
+| **Accessibility and inclusion** | The core action is one large button held for three seconds, with no text to read and no menu to navigate. Vibration confirms it without sight or sound. The receiving alarm is routed as an alarm, so it is heard rather than seen. Colour never carries meaning alone — every status is also a word. |
+| **Privacy and security** | Location is shared only during an open incident, only with named contacts and the assigned responder, and stops when it closes. One class decides who may see an incident, and an unrelated caller is told it does not exist rather than that they are barred. Cancelling needs a PIN, and failed attempts are recorded. The caller is always taken from the token, never from the request body. |
+| **Multilingual access** | **The weakest point of this build: only English ships.** What exists is the mechanism, which is the awkward part to add later — language is a property of the recipient rather than the deployment, carried per account and per contact, resolved per recipient when alerts go out, and recorded on each delivery. Alert wording lives in one class per language, so adding Kiswahili, French or Portuguese is one class each, and the compiler refuses to build until every message in it exists. The real cost is review by a first-language speaker, not code. |
+| **Local relevance** | Responders are data an administrator verifies — a campus guard room, an estate patrol, a community watch — so a new deployment needs no release. Phone numbers are normalised to international form, so a number saved in local format still matches the account its owner registered. |
+| **Clear next steps** | Every alert carries a plain maps link that opens on any phone. A contact sees whether anyone has accepted and who. A responder gets a navigation link and a forward-only status path, so "who is dealing with this" is never ambiguous. |
+
 ## What works, and what does not
 
 Working end to end, against a hosted API that any installed phone reaches from any network:
