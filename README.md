@@ -6,6 +6,25 @@ One action. The right people know you need help — and where to find you.
 
 ---
 
+## In plain words
+
+Think about the times you feel unsafe: walking home after dark, in a taxi that has left the usual
+route, someone following you, a situation at home about to turn violent. In all of them you have
+a phone in your hand and it is almost useless, because using it means talking out loud in front
+of the person you are afraid of — and saying where you are, which you may not even know.
+
+So people stay quiet and hope it passes. And when they do reach somebody, that person is left
+asking: where are you, are you okay, is anyone coming?
+
+SOSync is one button, held for three seconds. Your phone stays silent and only vibrates, so
+nobody beside you hears anything. The people you chose beforehand get an alert with a map of
+where you are, and so do registered security responders nearby who are on duty. Their phones are
+loud. One of them accepts, and from then on everybody watching can see that help is coming, who
+it is, and how far away. Your position keeps updating, so nobody has to ask.
+
+And you cannot be silenced by the person threatening you: ending the alert needs a PIN only you
+know, and a wrong one leaves help on the way.
+
 ## The problem
 
 Calling for help takes time you may not have, and makes noise you may not be able to afford.
@@ -35,39 +54,44 @@ through coordination between community responders.
 | Trust and verification | Responders are verified by an administrator, never self-service. Every alert states which channel it used and whether it got through. |
 | Anonymity and privacy | Location is shared only with named people, only during an active emergency, and access to it is audited. |
 | Low bandwidth | SMS is a first-class channel, not a nicety: it reaches a feature phone with no app and no data. |
-| Multilingual access | **Not answered in this build.** English only. The mechanism is in place — language is a property of the recipient, carried per account and per contact and recorded on every delivery — but only one catalogue ships. See [Known limits](#known-limits). |
+| Multilingual access | **Not answered in this build.** English only. Alert wording lives in one class per language rather than inline strings, so adding a language is one class plus a review by a first-language speaker. See [Known limits](#known-limits). |
 | Actionable information | Every message carries a plain maps link that opens on any phone, and every position carries its own age. |
 
 ## What actually works
 
 This is a five-day proof of concept, and the line between what is built and what is planned is
-drawn deliberately.
+drawn deliberately. It is drawn twice: once for the app somebody can install and use, and once
+for the API behind it, which is further along than the screens are.
 
-**Built and verified end to end:**
+**In the app, end to end — this is what the demo shows:**
 
-- Registration, login, phone verification, password reset, refresh tokens, three roles
-- Trusted contacts, matched by normalised phone number so a contact needs no account
-- SOS trigger with GPS capture, silent by default, idempotent against a repeated press
-- Alert fan-out to contacts (SMS + push + in-app), family members, and nearby verified responders
-- Live location trail during an incident, which stops at the moment the incident closes
-- Responder alert list sorted by waiting time, accept-first-wins, forward-only status progression
-- Cancellation gated on a safety PIN, where a wrong PIN leaves the emergency running
-- Full incident timeline and delivery log, recording the language each delivery went out in
-- Admin surface: statistics, responder verification, account suspension, per-incident audit trail
-- Family groups and simulated subscription plans
-- Interactive API docs at `/docs`
-- An automated test suite covering the safety-critical rules (see [Tests](#tests))
-- A Flutter app for both roles: press-and-hold SOS, live emergency with map and timeline,
-  trusted-contact inbox, and the responder call list with accept and status progression
+- Register, sign in, add and remove trusted contacts
+- Press-and-hold SOS with a three-second hold, silent by default, and a repeated press joining
+  the emergency already running rather than starting a second one
+- GPS captured with the alert, shown on a map, and re-reported every ten seconds while open
+- Alert fan-out to trusted contacts and nearby verified responders, with a per-recipient
+  delivery list showing the channel each one got and whether it was real or simulated
+- Alarm and vibration on a receiving phone (while the app is open — see the limits), with one
+  large Silence control
+- Incident timeline: raised, notified, accepted, arrived, resolved
+- Responder call list sorted by waiting time, accept-first-wins, forward-only status progression,
+  and a navigate link
+- Stand-down gated on a safety PIN, where a wrong PIN leaves the emergency running and is
+  recorded
+- Notification tray with acknowledgement
 
-**Deliberately not built:** real SMS/push gateways, payments, police integration, wearables,
+**In the API only, with no screen yet:** phone verification and password reset; the admin surface
+(platform statistics, responder verification, account suspension, per-incident audit trail);
+family groups; and simulated subscription plans. All of it is exercised by the test suite and
+callable from the interactive docs at `/docs`, but a judge watching the app will not see it.
+
+**Not built at all:** real SMS and push gateways, payments, police integration, wearables,
 check-in escalation, trip monitoring, background location, and any language beyond English. See
 [Known limits](#known-limits) and the app's own [limits](mobile/README.md#known-limits).
 
 ## Architecture
 
-Kotlin, Spring Boot 4, PostgreSQL — the same stack as the Readers backend, with the topology
-deliberately collapsed.
+Kotlin, Spring Boot 4, PostgreSQL. One module, one database, one process.
 
 ```
 sosync/
@@ -92,7 +116,7 @@ sosync/
 │   ├── lib/
 │   │   ├── api/                 HTTP client and payload mirrors
 │   │   ├── state/               Session, incident polling, GPS
-│   │   ├── i18n/                EN + SW UI catalogues
+│   │   ├── i18n/                UI wording (English)
 │   │   ├── screens/             One file per screen
 │   │   └── widgets/             SOS hold button, map, timeline, delivery rows
 │   └── README.md                Setup, decisions, known limits
@@ -100,27 +124,20 @@ sosync/
     └── demo.sh                  The full emergency flow, as a runnable script
 ```
 
-### Why a monolith, when Readers is microservices
+### Why one service
 
-Readers splits into core, data, infrastructure and support services behind an API gateway, with
-Eureka discovery, a transactional outbox draining to Pulsar, Redis, and MinIO. That is sound
-architecture for a platform with independent teams and independent scaling needs.
+A gateway, a discovery server and a message broker all have to be running before a demo can
+start, and none of them is something a judge will ever see. Five days is better spent on the
+emergency path, so this is one module, one database, one process: `./gradlew bootRun`.
 
-None of it earns its keep in five days. A gateway and a discovery server have to be running
-before a demo can start, and neither is something a judge will ever see. So SOSync keeps the
-language, framework, database, conventions and package layout, and drops the topology: one
-module, one database, one process, `./gradlew bootRun`.
+Two choices inside that worth stating:
 
-Two other deliberate departures from Readers:
-
-- **Spring MVC + JPA rather than WebFlux + R2DBC.** JPA makes a ten-entity model nearly free,
+- **Spring MVC + JPA rather than a reactive stack.** JPA makes a ten-entity model nearly free,
   and a blocking stack trace is much faster to read at two in the morning on day four.
-  (Readers' own `auth` service makes the same choice.)
-- **HS256 JWT rather than a Spring Authorization Server.** Readers runs a full OAuth2 issuer with
-  an RSA keypair because a dozen resource servers must verify tokens they did not issue. Here one
-  service signs and verifies its own, so a symmetric key does the same job. The trade-off is
-  real: the signing key is also the verification key, so it cannot be published, and rotating it
-  invalidates every token at once.
+- **A single symmetric signing key (HS256) rather than a full OAuth2 authorization server.** One
+  service issues and verifies its own tokens, so a symmetric key does the same job. The trade-off
+  is real: the signing key is also the verification key, so it cannot be published, and rotating
+  it invalidates every token at once.
 
 ### Design decisions worth knowing about
 
@@ -146,7 +163,7 @@ after resolution. This is verified in `docs/demo.sh`, step 15.
 
 **Every position carries its age.** A map pin with no timestamp is actively misleading: it looks
 like where somebody is when it may be where they were twenty minutes ago. Location responses
-include `ageSeconds` and a `staleWarning`, and responder positions that go stale stop being used
+include `ageSeconds` and a `stale` flag, and responder positions that go stale stop being used
 for matching at all.
 
 **Delivery is never overstated.** No real SMS or push gateway is connected, so deliveries are
@@ -271,7 +288,7 @@ than spread evenly for the sake of a coverage number:
 | `IncidentLifecycleTest` | Raising an alert with and without GPS, the double-press guard, first-responder-wins, forward-only transitions, and location being refused once the incident closes |
 | `SafetyPinCancellationTest` | Only the reporter can cancel; a wrong PIN leaves the emergency **running**; the password works only until a PIN exists; failed attempts are audited |
 | `IncidentAccessPolicyTest` | Who may read an incident, why a stranger gets 404 rather than 403, a responder losing sight of an alert somebody else took, and location access ending at close |
-| `NotificationLanguageTest` | Per-recipient language and its fallback order, SMS-only contacts, verified-responder-only dispatch, stale positions being ignored, and the reporter never being sent an SMS about their own silent alarm |
+| `NotificationFanOutTest` | Per-recipient delivery rules, SMS-only contacts, verified-responder-only dispatch, stale positions being ignored, and the reporter never being sent an SMS about their own silent alarm |
 | `SecurityBoundaryTest` | The filter chain over real HTTP: role boundaries, refresh tokens rejected as access tokens, login not revealing who has an account, admin not being self-assignable |
 | `AlertStringsTest`, `PhonesTest`, `GeoTest` | Pure unit tests: catalogue completeness per language, phone-format equivalence, distance and the (0, 0) failed-fix case |
 
@@ -298,6 +315,14 @@ the script shows the journey.
 ## Known limits
 
 Stated plainly, because the difference between a prototype and a product is mostly this list.
+
+**No admin or family screens.** Responder verification, suspension, statistics, the audit trail,
+family groups and plans exist in the API and in the tests, but nobody can reach them from the
+app. A five-day build spent its screen time on the emergency path.
+
+**The alarm only sounds while the app is open.** A trusted contact with SOSync closed hears
+nothing until they open it, which is the gap push notifications close. Nobody walks around with a
+panic app open, so this is the first thing to build next.
 
 **Not an emergency service.** SOSync is not connected to any national emergency number and makes
 no claim of police dispatch or guaranteed rescue. "Responders" means verified private security,
@@ -365,7 +390,8 @@ Nearest first:
 
 ## API overview
 
-44 endpoints, all documented interactively at `/docs`.
+50 endpoints, all documented interactively at `/docs`. The app uses a subset; the rest are
+exercised by the tests and callable from the docs page.
 
 | Area | Base path |
 |---|---|
